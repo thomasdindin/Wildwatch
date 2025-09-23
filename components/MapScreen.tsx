@@ -1,13 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, Animated } from 'react-native';
+import { View, StyleSheet, Animated, Text, TouchableOpacity } from 'react-native';
 import Mapbox from '@rnmapbox/maps';
-import { useCurrentPosition } from '../hooks/useCurrentPosition';
+import * as Haptics from 'expo-haptics';
+import { LongPressGestureHandler, State } from 'react-native-gesture-handler';
+
+import { useCurrentPosition } from '@/hooks/useCurrentPosition';
+import { useObservations } from '@/hooks/useObservations';
 import { LoadingScreen } from './LoadingScreen';
 import { UnauthorizedScreen } from './UnauthorizedScreen';
 import { ObservationForm } from './ObservationForm';
 import { ObservationDetails } from './ObservationDetails';
-import { Observation } from '../types/Observation';
-import { ObservationService } from '../services/ObservationService';
+import { Observation } from '@/types/Observation';
+import { LocationIcon, TargetIcon } from './Icons';
+import { MAP_CONFIG, HAPTIC_CONFIG } from '@/constants/config';
+import { COLORS } from '@/constants/styles';
 
 Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_PUBLIC_TOKEN!);
 
@@ -18,23 +24,23 @@ export const MapScreen: React.FC = () => {
     latitude: number;
     longitude: number;
   } | null>(null);
-  const [observations, setObservations] = useState<Observation[]>([]);
   const [selectedObservation, setSelectedObservation] = useState<Observation | null>(null);
   const [showObservationDetails, setShowObservationDetails] = useState(false);
+  const [draggedObservation, setDraggedObservation] = useState<Observation | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
   const animationValues = useRef<{ [key: string]: Animated.Value }>({});
+  const cameraRef = useRef<Mapbox.Camera>(null);
+
+  const { observations, addObservation, updateObservation, deleteObservation } = useObservations();
 
   useEffect(() => {
-    loadObservations();
-  }, []);
-
-  const loadObservations = async () => {
-    try {
-      const savedObservations = await ObservationService.getObservations();
-      setObservations(savedObservations);
-    } catch (error) {
-      console.error('Error loading observations:', error);
-    }
-  };
+    observations.forEach(observation => {
+      if (!animationValues.current[observation.id]) {
+        animationValues.current[observation.id] = new Animated.Value(0);
+      }
+    });
+  }, [observations]);
 
   const handleMapPress = (feature: any) => {
     const coordinates = feature.geometry.coordinates;
@@ -45,16 +51,22 @@ export const MapScreen: React.FC = () => {
     setShowObservationForm(true);
   };
 
-  const handleObservationSave = (newObservation: Observation) => {
-    setObservations(prev => [...prev, newObservation]);
+  const handleObservationSave = async (newObservation: Observation) => {
+    try {
+      await addObservation(newObservation);
 
-    animationValues.current[newObservation.id] = new Animated.Value(-100);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType[HAPTIC_CONFIG.NOTIFICATION_SUCCESS]);
 
-    Animated.timing(animationValues.current[newObservation.id], {
-      toValue: 0,
-      duration: 800,
-      useNativeDriver: true,
-    }).start();
+      animationValues.current[newObservation.id] = new Animated.Value(-200);
+      Animated.spring(animationValues.current[newObservation.id], {
+        toValue: 0,
+        useNativeDriver: true,
+        tension: 100,
+        friction: 8,
+      }).start();
+    } catch (error) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType[HAPTIC_CONFIG.NOTIFICATION_ERROR]);
+    }
   };
 
   const handleFormClose = () => {
@@ -70,6 +82,64 @@ export const MapScreen: React.FC = () => {
   const handleDetailsClose = () => {
     setShowObservationDetails(false);
     setSelectedObservation(null);
+  };
+
+  const handleObservationUpdate = async (updatedObservation: Observation) => {
+    try {
+      await updateObservation(updatedObservation);
+      setSelectedObservation(updatedObservation);
+    } catch (error) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType[HAPTIC_CONFIG.NOTIFICATION_ERROR]);
+    }
+  };
+
+  const handleObservationDelete = async (observationId: string) => {
+    try {
+      await deleteObservation(observationId);
+      delete animationValues.current[observationId];
+      setShowObservationDetails(false);
+      setSelectedObservation(null);
+    } catch (error) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType[HAPTIC_CONFIG.NOTIFICATION_ERROR]);
+    }
+  };
+
+  const handleRecenterOnUser = () => {
+    if (location && cameraRef.current) {
+      cameraRef.current.setCamera({
+        centerCoordinate: [location.coords.longitude, location.coords.latitude],
+        zoomLevel: MAP_CONFIG.USER_LOCATION_ZOOM,
+        animationDuration: 1000,
+      });
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle[HAPTIC_CONFIG.IMPACT_STYLE]);
+    }
+  };
+
+  const handleLongPress = (observation: Observation) => {
+    setDraggedObservation(observation);
+    setIsDragging(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  };
+
+  const handleMapDrag = async (feature: any) => {
+    if (isDragging && draggedObservation) {
+      const coordinates = feature.geometry.coordinates;
+      const updatedObservation: Observation = {
+        ...draggedObservation,
+        latitude: coordinates[1],
+        longitude: coordinates[0],
+      };
+
+      try {
+        await updateObservation(updatedObservation);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType[HAPTIC_CONFIG.NOTIFICATION_SUCCESS]);
+      } catch (error) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType[HAPTIC_CONFIG.NOTIFICATION_ERROR]);
+      }
+
+      setIsDragging(false);
+      setDraggedObservation(null);
+    }
   };
 
   if (status === 'loading') {
@@ -88,16 +158,17 @@ export const MapScreen: React.FC = () => {
     <View style={styles.container}>
       <Mapbox.MapView
         style={styles.map}
-        onPress={handleMapPress}
+        onPress={isDragging ? handleMapDrag : handleMapPress}
         compassEnabled={true}
         logoEnabled={false}
         attributionEnabled={false}
       >
         <Mapbox.Camera
+          ref={cameraRef}
           centerCoordinate={[location.coords.longitude, location.coords.latitude]}
-          zoomLevel={15}
+          zoomLevel={MAP_CONFIG.DEFAULT_ZOOM}
           animationMode="flyTo"
-          animationDuration={2000}
+          animationDuration={MAP_CONFIG.ANIMATION_DURATION}
         />
 
         <Mapbox.LocationPuck
@@ -107,35 +178,93 @@ export const MapScreen: React.FC = () => {
 
         {observations.map((observation) => {
           const animValue = animationValues.current[observation.id];
+          const hasAnimation = animValue && animValue._value !== 0;
 
           return (
-            <Mapbox.PointAnnotation
+            <Mapbox.MarkerView
               key={observation.id}
               id={observation.id}
               coordinate={[observation.longitude, observation.latitude]}
-              title={observation.name}
-              snippet={`Observé le ${observation.date}`}
-              onSelected={() => handleObservationPress(observation)}
             >
               <Animated.View
                 style={[
-                  styles.observationMarker,
-                  animValue && {
-                    transform: [{ translateY: animValue }]
+                  hasAnimation && {
+                    transform: [
+                      {
+                        translateY: animValue ? animValue.interpolate({
+                          inputRange: [-200, 0],
+                          outputRange: [-200, 0],
+                          extrapolate: 'clamp'
+                        }) : 0
+                      },
+                      {
+                        scale: animValue ? animValue.interpolate({
+                          inputRange: [-200, 0],
+                          outputRange: [0.3, 1],
+                          extrapolate: 'clamp'
+                        }) : 1
+                      }
+                    ],
+                    opacity: animValue ? animValue.interpolate({
+                      inputRange: [-200, 0],
+                      outputRange: [0, 1],
+                      extrapolate: 'clamp'
+                    }) : 1
                   }
                 ]}
               >
-                <View style={styles.observationMarkerInner}>
-                  <View style={styles.observationMarkerText}>
-                    <View style={styles.observationIcon} />
-                  </View>
-                </View>
-                <View style={styles.observationMarkerTail} />
+                <LongPressGestureHandler
+                  onHandlerStateChange={({ nativeEvent }) => {
+                    if (nativeEvent.state === State.ACTIVE) {
+                      handleLongPress(observation);
+                    }
+                  }}
+                  minDurationMs={HAPTIC_CONFIG.DRAG_PRESS_DURATION}
+                >
+                  <TouchableOpacity
+                    style={[
+                      styles.simpleMarker,
+                      draggedObservation?.id === observation.id && styles.draggingMarker
+                    ]}
+                    onPress={() => {
+                      if (!isDragging) {
+                        handleObservationPress(observation);
+                      }
+                    }}
+                    delayPressIn={100}
+                  >
+                    <Text style={styles.markerLabel}>{observation.name}</Text>
+                    <View style={[
+                      styles.markerDot,
+                      draggedObservation?.id === observation.id && styles.draggingDot
+                    ]} />
+                  </TouchableOpacity>
+                </LongPressGestureHandler>
               </Animated.View>
-            </Mapbox.PointAnnotation>
+            </Mapbox.MarkerView>
           );
         })}
       </Mapbox.MapView>
+
+      {/* Bouton de recentrage */}
+      <TouchableOpacity
+        style={[styles.recenterButton, { bottom: 120 }]} // Ajusté pour la tab bar
+        onPress={handleRecenterOnUser}
+      >
+        <LocationIcon color="#007AFF" size={20} />
+      </TouchableOpacity>
+
+      {/* Indicateur de mode drag */}
+      {isDragging && (
+        <View style={styles.dragIndicator}>
+          <View style={styles.dragIndicatorContent}>
+            <TargetIcon color="#ffffff" size={20} />
+            <Text style={styles.dragIndicatorText}>
+              Tapez sur la carte pour placer l'observation
+            </Text>
+          </View>
+        </View>
+      )}
 
       {showObservationForm && selectedCoordinates && (
         <ObservationForm
@@ -151,6 +280,8 @@ export const MapScreen: React.FC = () => {
         observation={selectedObservation}
         visible={showObservationDetails}
         onClose={handleDetailsClose}
+        onUpdate={handleObservationUpdate}
+        onDelete={handleObservationDelete}
       />
     </View>
   );
@@ -221,5 +352,106 @@ const styles = StyleSheet.create({
     borderRightColor: 'transparent',
     borderTopColor: '#4CAF50',
     marginTop: -3,
+  },
+  observationLabel: {
+    position: 'absolute',
+    top: -35,
+    left: -60,
+    right: -60,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  observationLabelText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: "600",
+    textAlign: "center",
+    maxWidth: 120,
+  },
+  simpleMarker: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  markerLabel: {
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginBottom: 5,
+    textAlign: 'center',
+    minWidth: 60,
+  },
+  markerDot: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#4CAF50',
+    borderWidth: 3,
+    borderColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  recenterButton: {
+    position: 'absolute',
+    bottom: 100,
+    right: 20,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  draggingMarker: {
+    opacity: 0.7,
+    transform: [{ scale: 1.1 }],
+  },
+  draggingDot: {
+    backgroundColor: '#FF6B35',
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  dragIndicator: {
+    position: 'absolute',
+    top: 50,
+    left: 20,
+    right: 20,
+    backgroundColor: 'rgba(255, 107, 53, 0.9)',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 25,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  dragIndicatorContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  dragIndicatorText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });

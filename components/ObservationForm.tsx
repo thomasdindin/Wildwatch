@@ -1,4 +1,3 @@
-import * as ImagePicker from 'expo-image-picker';
 import React, { useState } from 'react';
 import {
   Alert,
@@ -8,10 +7,16 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
+  Platform
 } from 'react-native';
-import { ObservationService } from '../services/ObservationService';
-import { Observation } from '../types/Observation';
+import * as ImagePicker from 'expo-image-picker';
+import DateTimePicker from '@react-native-community/datetimepicker';
+
+import { ObservationService } from '@/services/ObservationService';
+import { Observation } from '@/types/Observation';
+import { CalendarIcon, CameraIcon } from './Icons';
+import { logger } from '@/utils/logger';
 
 interface ObservationFormProps {
   visible: boolean;
@@ -32,6 +37,7 @@ export const ObservationForm: React.FC<ObservationFormProps> = ({
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [imageUri, setImageUri] = useState<string | undefined>();
   const [isLoading, setIsLoading] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   const resetForm = () => {
     setName('');
@@ -113,6 +119,18 @@ export const ObservationForm: React.FC<ObservationFormProps> = ({
     );
   };
 
+  const handleDateChange = (event: any, selectedDate?: Date) => {
+    setShowDatePicker(Platform.OS === 'ios');
+    if (selectedDate) {
+      const dateString = selectedDate.toISOString().split('T')[0];
+      setDate(dateString);
+    }
+  };
+
+  const showDatePickerModal = () => {
+    setShowDatePicker(true);
+  };
+
   const handleSave = async () => {
     if (!name.trim()) {
       Alert.alert('Erreur', 'Veuillez entrer un nom pour l\'observation.');
@@ -138,7 +156,7 @@ export const ObservationForm: React.FC<ObservationFormProps> = ({
       onClose();
     } catch (error) {
       Alert.alert('Erreur', 'Impossible de sauvegarder l\'observation.');
-      console.error('Error saving observation:', error);
+      logger.error('Failed to save observation', error);
     } finally {
       setIsLoading(false);
     }
@@ -173,12 +191,15 @@ export const ObservationForm: React.FC<ObservationFormProps> = ({
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Date</Text>
-            <TextInput
-              style={styles.input}
-              value={date}
-              onChangeText={setDate}
-              placeholder="YYYY-MM-DD"
-            />
+            <TouchableOpacity
+              style={styles.dateButton}
+              onPress={showDatePickerModal}
+            >
+              <Text style={styles.dateButtonText}>
+                {date || 'Sélectionner une date'}
+              </Text>
+              <CalendarIcon color="#666" size={20} />
+            </TouchableOpacity>
           </View>
 
           <View style={styles.inputGroup}>
@@ -202,12 +223,25 @@ export const ObservationForm: React.FC<ObservationFormProps> = ({
               </View>
             ) : (
               <TouchableOpacity style={styles.addImageButton} onPress={showImagePicker}>
-                <Text style={styles.addImageText}>📷 Ajouter une image</Text>
+                <View style={styles.addImageContent}>
+                  <CameraIcon color="#007AFF" size={20} />
+                  <Text style={styles.addImageText}>Ajouter une image</Text>
+                </View>
               </TouchableOpacity>
             )}
           </View>
         </View>
       </View>
+
+      {/* DateTimePicker */}
+      {showDatePicker && (
+        <DateTimePicker
+          value={date ? new Date(date) : new Date()}
+          mode="date"
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          onChange={handleDateChange}
+        />
+      )}
     </Modal>
   );
 };
@@ -282,6 +316,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'white',
   },
+  addImageContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
   addImageText: {
     color: '#007AFF',
     fontSize: 16,
@@ -304,5 +344,20 @@ const styles = StyleSheet.create({
   changeImageText: {
     color: 'white',
     fontSize: 14,
+  },
+  dateButton: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    backgroundColor: 'white',
+  },
+  dateButtonText: {
+    fontSize: 16,
+    color: '#333',
+    flex: 1,
   },
 });

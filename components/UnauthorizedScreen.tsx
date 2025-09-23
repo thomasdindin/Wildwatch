@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import * as Linking from 'expo-linking';
+import { LocationIcon } from './Icons';
 
 interface UnauthorizedScreenProps {
   onRetry: () => void;
@@ -24,7 +25,9 @@ export const UnauthorizedScreen: React.FC<UnauthorizedScreenProps> = ({
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>📍</Text>
+      <View style={styles.iconContainer}>
+        <LocationIcon color="#FF6B35" size={64} />
+      </View>
       <Text style={styles.message}>{message}</Text>
       <Text style={styles.description}>
         Pour utiliser cette application, nous avons besoin d'accéder à votre localisation.
@@ -49,9 +52,9 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: '#f5f5f5',
   },
-  title: {
-    fontSize: 64,
+  iconContainer: {
     marginBottom: 20,
+    alignItems: 'center',
   },
   message: {
     fontSize: 20,
