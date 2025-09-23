@@ -5,6 +5,7 @@ import { useCurrentPosition } from '../hooks/useCurrentPosition';
 import { LoadingScreen } from './LoadingScreen';
 import { UnauthorizedScreen } from './UnauthorizedScreen';
 import { ObservationForm } from './ObservationForm';
+import { ObservationDetails } from './ObservationDetails';
 import { Observation } from '../types/Observation';
 import { ObservationService } from '../services/ObservationService';
 
@@ -18,6 +19,8 @@ export const MapScreen: React.FC = () => {
     longitude: number;
   } | null>(null);
   const [observations, setObservations] = useState<Observation[]>([]);
+  const [selectedObservation, setSelectedObservation] = useState<Observation | null>(null);
+  const [showObservationDetails, setShowObservationDetails] = useState(false);
   const animationValues = useRef<{ [key: string]: Animated.Value }>({});
 
   useEffect(() => {
@@ -59,6 +62,16 @@ export const MapScreen: React.FC = () => {
     setSelectedCoordinates(null);
   };
 
+  const handleObservationPress = (observation: Observation) => {
+    setSelectedObservation(observation);
+    setShowObservationDetails(true);
+  };
+
+  const handleDetailsClose = () => {
+    setShowObservationDetails(false);
+    setSelectedObservation(null);
+  };
+
   if (status === 'loading') {
     return <LoadingScreen />;
   }
@@ -87,14 +100,10 @@ export const MapScreen: React.FC = () => {
           animationDuration={2000}
         />
 
-        <Mapbox.PointAnnotation
-          id="user-location"
-          coordinate={[location.coords.longitude, location.coords.latitude]}
-        >
-          <View style={styles.userLocationMarker}>
-            <View style={styles.userLocationInner} />
-          </View>
-        </Mapbox.PointAnnotation>
+        <Mapbox.LocationPuck
+          visible={true}
+          pulsing={{ isEnabled: true }}
+        />
 
         {observations.map((observation) => {
           const animValue = animationValues.current[observation.id];
@@ -106,6 +115,7 @@ export const MapScreen: React.FC = () => {
               coordinate={[observation.longitude, observation.latitude]}
               title={observation.name}
               snippet={`Observé le ${observation.date}`}
+              onSelected={() => handleObservationPress(observation)}
             >
               <Animated.View
                 style={[
@@ -136,6 +146,12 @@ export const MapScreen: React.FC = () => {
           longitude={selectedCoordinates.longitude}
         />
       )}
+
+      <ObservationDetails
+        observation={selectedObservation}
+        visible={showObservationDetails}
+        onClose={handleDetailsClose}
+      />
     </View>
   );
 };
