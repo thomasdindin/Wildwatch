@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, Image, TextInput, Alert, ScrollView, Platform } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import Share from 'react-native-share';
 
 import { Observation } from '@/types/Observation';
 import { ObservationService } from '@/services/ObservationService';
-import { CalendarIcon, EditIcon, CameraIcon, DeleteIcon } from './Icons';
+import { CalendarIcon, EditIcon, CameraIcon, DeleteIcon, ShareIcon } from './Icons';
 import { logger } from '@/utils/logger';
 
 interface ObservationDetailsProps {
@@ -178,6 +179,23 @@ export const ObservationDetails: React.FC<ObservationDetailsProps> = ({
     );
   };
 
+  const handleShare = async () => {
+    try {
+      const shareOptions = {
+        title: 'Observation de la faune',
+        message: `🐾 Observation: ${observation.name}\n📅 Date: ${observation.date}\n📍 Localisation: ${observation.latitude.toFixed(6)}, ${observation.longitude.toFixed(6)}\n\nPartagé depuis WildWatch`,
+        ...(observation.imageUri && { url: observation.imageUri }),
+      };
+
+      await Share.open(shareOptions);
+    } catch (error: any) {
+      if (error.message !== 'User did not share') {
+        logger.error('Failed to share observation', error);
+        Alert.alert('Erreur', 'Impossible de partager l\'observation.');
+      }
+    }
+  };
+
   return (
     <Modal
       visible={visible}
@@ -222,6 +240,9 @@ export const ObservationDetails: React.FC<ObservationDetailsProps> = ({
                 </>
               ) : (
                 <>
+                  <TouchableOpacity onPress={handleShare} style={styles.shareButton}>
+                    <ShareIcon color="#007AFF" size={18} />
+                  </TouchableOpacity>
                   <TouchableOpacity onPress={handleEdit} style={styles.editButton}>
                     <EditIcon color="#ffffff" size={18} />
                   </TouchableOpacity>
@@ -358,6 +379,15 @@ const styles = StyleSheet.create({
   headerButtons: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  shareButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#f0f0f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
   },
   editButton: {
     width: 30,

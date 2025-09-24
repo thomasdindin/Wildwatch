@@ -40,3 +40,11 @@ export const MapIcon = ({ color = '#000', size = 20 }: IconProps) => (
 export const ListIcon = ({ color = '#000', size = 20 }: IconProps) => (
   <Ionicons name="list" size={size} color={color} />
 );
+
+export const PawIcon = ({color = "#4CAF50", size = 20} : IconProps) => (
+    <Ionicons name="paw" size={size} color={color}/>
+);
+
+export const ShareIcon = ({ color = '#007AFF', size = 18 }: IconProps) => (
+  <Ionicons name="share-outline" size={size} color={color} />
+);

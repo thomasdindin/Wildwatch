@@ -11,9 +11,8 @@ import { UnauthorizedScreen } from './UnauthorizedScreen';
 import { ObservationForm } from './ObservationForm';
 import { ObservationDetails } from './ObservationDetails';
 import { Observation } from '@/types/Observation';
-import { LocationIcon, TargetIcon } from './Icons';
+import { LocationIcon, TargetIcon, PawIcon } from './Icons';
 import { MAP_CONFIG, HAPTIC_CONFIG } from '@/constants/config';
-import { COLORS } from '@/constants/styles';
 
 Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_PUBLIC_TOKEN!);
 
@@ -235,9 +234,14 @@ export const MapScreen: React.FC = () => {
                   >
                     <Text style={styles.markerLabel}>{observation.name}</Text>
                     <View style={[
-                      styles.markerDot,
-                      draggedObservation?.id === observation.id && styles.draggingDot
-                    ]} />
+                      styles.markerContainer,
+                      draggedObservation?.id === observation.id && styles.draggingContainer
+                    ]}>
+                      <PawIcon
+                        color={draggedObservation?.id === observation.id ? "#FF6B35" : "#4CAF50"}
+                        size={24}
+                      />
+                    </View>
                   </TouchableOpacity>
                 </LongPressGestureHandler>
               </Animated.View>
@@ -388,13 +392,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     minWidth: 60,
   },
-  markerDot: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#4CAF50',
-    borderWidth: 3,
-    borderColor: 'white',
+  markerContainer: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
@@ -421,11 +425,11 @@ const styles = StyleSheet.create({
     opacity: 0.7,
     transform: [{ scale: 1.1 }],
   },
-  draggingDot: {
-    backgroundColor: '#FF6B35',
+  draggingContainer: {
     shadowOpacity: 0.5,
     shadowRadius: 8,
     elevation: 8,
+    transform: [{ scale: 1.1 }],
   },
   dragIndicator: {
     position: 'absolute',
