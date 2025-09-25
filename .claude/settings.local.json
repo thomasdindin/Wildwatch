@@ -7,7 +7,8 @@
       "Bash(npx expo:*)",
       "Bash(npx:*)",
       "Bash(npm run build:*)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(mkdir:*)"
     ],
     "deny": [],
     "ask": []

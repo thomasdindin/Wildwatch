@@ -126,9 +126,18 @@ WildWatch/
      ```
 
 4. **Lancer l'application**
-   ```bash
-   npm start
-   ```
+Faire un prebuild : 
+```bash
+npm run prebuild
+```
+Lancer l'application :
+```bash
+#Android
+npm run android
+
+#iOs
+npm run ios
+```
 
 ### Scripts disponibles
 

@@ -287,7 +287,7 @@ export const MapScreen: React.FC = () => {
           <View style={styles.dragIndicatorContent}>
             <TargetIcon color="#ffffff" size={20} />
             <Text style={styles.dragIndicatorText}>
-              Tapez sur la carte pour placer l'observation
+              {"Tapez sur la carte pour placer l'observation"}
             </Text>
           </View>
         </View>
