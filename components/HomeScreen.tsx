@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { useCurrentPosition } from '../hooks/useCurrentPosition';
+import { useCurrentPosition } from '@/hooks';
 import { LoadingScreen } from './LoadingScreen';
 import { UnauthorizedScreen } from './UnauthorizedScreen';
 
@@ -16,7 +16,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigateToMap }) => {
   }
 
   if (status === 'denied' || status === 'error') {
-    return <UnauthorizedScreen onRetry={requestPermission} message={error || undefined} />;
+    return <UnauthorizedScreen onRetry={requestPermission} {...(error && { message: error })} />;
   }
 
   if (!location) {

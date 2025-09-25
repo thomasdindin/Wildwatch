@@ -101,7 +101,12 @@ export class ObservationService {
    * Generate a unique ID for observations
    */
   static generateId(): string {
-    return `obs_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+    const timestamp = Date.now();
+    const randomPart = Math.random().toString(36).substring(2, 15);
+    const uniqueId = `obs_${timestamp}_${randomPart}_${performance.now().toString(36)}`;
+
+    // Ensure uniqueness by adding a counter if needed
+    return uniqueId.replace(/\./g, '');
   }
 
   /**

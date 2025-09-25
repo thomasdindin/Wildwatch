@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, Image, TextInput, Alert, ScrollView, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, Alert, ScrollView, Platform, TextInput } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Share from 'react-native-share';
 
 import { Observation } from '@/types/Observation';
 import { ObservationService } from '@/services/ObservationService';
-import { CalendarIcon, EditIcon, CameraIcon, DeleteIcon, ShareIcon } from './Icons';
+import { CalendarIcon, EditIcon, CameraIcon, DeleteIcon, ShareIcon, CloseIcon, SaveIcon } from './Icons';
 import { logger } from '@/utils/logger';
+import { Modal, IconButton } from './ui';
+import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES } from '@/constants/styles';
 
 interface ObservationDetailsProps {
   observation: Observation | null;
@@ -143,7 +145,7 @@ export const ObservationDetails: React.FC<ObservationDetailsProps> = ({
     );
   };
 
-  const handleDateChange = (event: any, selectedDate?: Date) => {
+  const handleDateChange = (_event: any, selectedDate?: Date) => {
     setShowDatePicker(Platform.OS === 'ios');
     if (selectedDate) {
       const dateString = selectedDate.toISOString().split('T')[0];
@@ -197,64 +199,59 @@ export const ObservationDetails: React.FC<ObservationDetailsProps> = ({
   };
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      transparent={true}
-      onRequestClose={handleClose}
-    >
-      <View style={styles.overlay}>
-        <View style={styles.container}>
-          <View style={styles.header}>
-            {isEditing ? (
-              <TextInput
-                style={styles.titleInput}
-                value={editedName}
-                onChangeText={setEditedName}
-                placeholder="Nom de l'observation"
-                maxLength={100}
-              />
-            ) : (
-              <Text style={styles.title}>{observation.name}</Text>
-            )}
+    <Modal visible={visible} onClose={handleClose}>
+      <View style={styles.header}>
+        {isEditing ? (
+          <TextInput
+            value={editedName}
+            onChangeText={setEditedName}
+            placeholder="Nom de l'observation"
+            maxLength={100}
+            style={styles.titleInput}
+            placeholderTextColor={COLORS.TEXT.TERTIARY}
+            multiline={false}
+            autoFocus={true}
+          />
+        ) : (
+          <Text style={styles.title}>{observation.name}</Text>
+        )}
 
-            <View style={styles.headerButtons}>
-              {isEditing ? (
-                <>
-                  <TouchableOpacity
-                    onPress={handleCancel}
-                    style={styles.cancelButton}
-                    disabled={isLoading}
-                  >
-                    <Text style={styles.cancelButtonText}>Annuler</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={handleSave}
-                    style={styles.saveButton}
-                    disabled={isLoading}
-                  >
-                    <Text style={[styles.saveButtonText, isLoading && styles.disabledText]}>
-                      {isLoading ? 'Sauvegarde...' : 'Sauvegarder'}
-                    </Text>
-                  </TouchableOpacity>
-                </>
-              ) : (
-                <>
-                  <TouchableOpacity onPress={handleShare} style={styles.shareButton}>
-                    <ShareIcon color="#007AFF" size={18} />
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={handleEdit} style={styles.editButton}>
-                    <EditIcon color="#ffffff" size={18} />
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-                    <Text style={styles.closeButtonText}>×</Text>
-                  </TouchableOpacity>
-                </>
-              )}
-            </View>
-          </View>
+        <View style={styles.headerButtons}>
+          {isEditing ? (
+            <>
+              <IconButton
+                onPress={handleCancel}
+                size="md"
+                variant="ghost"
+                disabled={isLoading}
+              >
+                <CloseIcon color={COLORS.TEXT.SECONDARY} size={18} />
+              </IconButton>
+              <IconButton
+                onPress={handleSave}
+                size="md"
+                disabled={isLoading}
+              >
+                <SaveIcon color={isLoading ? COLORS.TEXT.TERTIARY : COLORS.SECONDARY} size={18} />
+              </IconButton>
+            </>
+          ) : (
+            <>
+              <IconButton onPress={handleShare} size="md">
+                <ShareIcon color={COLORS.SECONDARY} size={18} />
+              </IconButton>
+              <IconButton onPress={handleEdit} size="md">
+                <EditIcon color={COLORS.TEXT.PRIMARY} size={18} />
+              </IconButton>
+              <IconButton onPress={handleClose} size="md" variant="ghost">
+                <Text style={styles.closeButtonText}>×</Text>
+              </IconButton>
+            </>
+          )}
+        </View>
+      </View>
 
-          <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
             <Text style={styles.label}>Date d'observation:</Text>
             {isEditing ? (
               <TouchableOpacity
@@ -264,7 +261,7 @@ export const ObservationDetails: React.FC<ObservationDetailsProps> = ({
                 <Text style={styles.dateButtonText}>
                   {editedDate || 'Sélectionner une date'}
                 </Text>
-                <CalendarIcon color="#666" size={20} />
+                <CalendarIcon color={COLORS.TEXT.SECONDARY} size={20} />
               </TouchableOpacity>
             ) : (
               <Text style={styles.value}>{observation.date}</Text>
@@ -316,14 +313,12 @@ export const ObservationDetails: React.FC<ObservationDetailsProps> = ({
                 onPress={handleDelete}
               >
                 <View style={styles.deleteButtonContent}>
-                  <DeleteIcon color="#ffffff" size={18} />
+                  <DeleteIcon color={COLORS.TEXT.LIGHT} size={18} />
                   <Text style={styles.deleteButtonText}>Supprimer l'observation</Text>
                 </View>
               </TouchableOpacity>
             )}
-          </ScrollView>
-        </View>
-      </View>
+      </ScrollView>
 
       {/* DateTimePicker */}
       {showDatePicker && (
@@ -339,222 +334,145 @@ export const ObservationDetails: React.FC<ObservationDetailsProps> = ({
 };
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  container: {
-    backgroundColor: 'white',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    minHeight: '60%',
-    maxHeight: '85%',
-    paddingTop: 20,
-    paddingHorizontal: 20,
-    paddingBottom: 34,
-  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: SPACING.XL,
+    paddingBottom: SPACING.LG,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.BORDER.LIGHT,
   },
   title: {
-    fontSize: 24,
+    fontSize: FONT_SIZES.XXXL,
     fontWeight: 'bold',
-    color: '#333',
+    color: COLORS.TEXT.PRIMARY,
     flex: 1,
   },
   titleInput: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
     flex: 1,
-    borderBottomWidth: 1,
-    borderBottomColor: '#007AFF',
-    paddingBottom: 4,
-    marginRight: 10,
+    marginRight: SPACING.MD,
+    fontSize: FONT_SIZES.XXXL,
+    fontWeight: 'bold',
+    color: COLORS.TEXT.PRIMARY,
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    paddingHorizontal: 0,
+    paddingVertical: SPACING.XS,
+    borderBottomWidth: 2,
+    borderBottomColor: COLORS.SECONDARY,
   },
   headerButtons: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  shareButton: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#f0f0f0',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 8,
-  },
-  editButton: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#f0f0f0',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 8,
-  },
-  editButtonText: {
-    fontSize: 16,
-  },
-  closeButton: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#f0f0f0',
-    justifyContent: 'center',
-    alignItems: 'center',
+    gap: SPACING.SM,
   },
   closeButtonText: {
-    fontSize: 24,
-    color: '#666',
+    fontSize: FONT_SIZES.XXXL,
+    color: COLORS.TEXT.SECONDARY,
     fontWeight: 'bold',
-  },
-  cancelButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-    backgroundColor: '#f0f0f0',
-    marginRight: 8,
-  },
-  cancelButtonText: {
-    color: '#666',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  saveButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-    backgroundColor: '#007AFF',
-  },
-  saveButtonText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  disabledText: {
-    color: '#999',
   },
   content: {
     flex: 1,
-    paddingTop: 10,
+    paddingTop: SPACING.MD,
   },
   label: {
-    fontSize: 16,
+    fontSize: FONT_SIZES.LG,
     fontWeight: '600',
-    color: '#666',
-    marginTop: 16,
-    marginBottom: 4,
+    color: COLORS.TEXT.SECONDARY,
+    marginTop: SPACING.LG,
+    marginBottom: SPACING.XS,
   },
   value: {
-    fontSize: 16,
-    color: '#333',
-    marginBottom: 8,
+    fontSize: FONT_SIZES.LG,
+    color: COLORS.TEXT.PRIMARY,
+    marginBottom: SPACING.SM,
     fontWeight: '400',
     lineHeight: 20,
-  },
-  dateInput: {
-    fontSize: 16,
-    color: '#333',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 8,
-    backgroundColor: 'white',
   },
   dateButton: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 8,
-    backgroundColor: 'white',
+    borderColor: COLORS.BORDER.MEDIUM,
+    borderRadius: BORDER_RADIUS.SM,
+    padding: SPACING.MD,
+    marginBottom: SPACING.SM,
+    backgroundColor: COLORS.BACKGROUND.PRIMARY,
   },
   dateButtonText: {
-    fontSize: 16,
-    color: '#333',
+    fontSize: FONT_SIZES.LG,
+    color: COLORS.TEXT.PRIMARY,
     flex: 1,
-  },
-  dateButtonIcon: {
-    fontSize: 18,
-    marginLeft: 8,
   },
   image: {
     width: '100%',
     height: 200,
-    borderRadius: 10,
-    marginTop: 8,
+    borderRadius: BORDER_RADIUS.MD,
+    marginTop: SPACING.SM,
     resizeMode: 'cover',
   },
   deleteButton: {
-    backgroundColor: '#FF3B30',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    marginTop: 24,
-    marginBottom: 16,
+    backgroundColor: COLORS.ERROR,
+    paddingVertical: SPACING.MD,
+    paddingHorizontal: SPACING.LG,
+    borderRadius: BORDER_RADIUS.SM,
+    marginTop: SPACING.XXL,
+    marginBottom: SPACING.LG,
     alignItems: 'center',
   },
   deleteButtonContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: SPACING.SM,
   },
   deleteButtonText: {
-    color: 'white',
-    fontSize: 16,
+    color: COLORS.TEXT.LIGHT,
+    fontSize: FONT_SIZES.LG,
     fontWeight: '600',
   },
   imageEditContainer: {
-    marginBottom: 16,
+    marginBottom: SPACING.LG,
   },
   imageContainer: {
     alignItems: 'center',
   },
   addImageButton: {
     borderWidth: 2,
-    borderColor: '#007AFF',
+    borderColor: COLORS.SECONDARY,
     borderStyle: 'dashed',
-    borderRadius: 8,
-    padding: 20,
+    borderRadius: BORDER_RADIUS.SM,
+    padding: SPACING.XL,
     alignItems: 'center',
-    backgroundColor: 'white',
+    backgroundColor: COLORS.BACKGROUND.PRIMARY,
   },
   addImageContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: SPACING.SM,
   },
   addImageText: {
-    color: '#007AFF',
-    fontSize: 16,
+    color: COLORS.SECONDARY,
+    fontSize: FONT_SIZES.LG,
   },
   changeImageButton: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
-    marginTop: 10,
+    backgroundColor: COLORS.SECONDARY,
+    paddingHorizontal: SPACING.LG,
+    paddingVertical: SPACING.SM,
+    borderRadius: BORDER_RADIUS.SM,
+    marginTop: SPACING.MD,
   },
   changeImageText: {
-    color: 'white',
-    fontSize: 14,
+    color: COLORS.TEXT.LIGHT,
+    fontSize: FONT_SIZES.MD,
   },
   noImageText: {
-    fontSize: 16,
-    color: '#999',
+    fontSize: FONT_SIZES.LG,
+    color: COLORS.TEXT.TERTIARY,
     fontStyle: 'italic',
-    marginBottom: 8,
+    marginBottom: SPACING.SM,
   },
 });

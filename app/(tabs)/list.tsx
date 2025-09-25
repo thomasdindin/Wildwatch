@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Alert,
   SafeAreaView,
+  Animated,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 
@@ -20,6 +21,7 @@ import { HAPTIC_CONFIG } from '@/constants/config';
 export default function ListScreen() {
   const [selectedObservation, setSelectedObservation] = useState<Observation | null>(null);
   const [showObservationDetails, setShowObservationDetails] = useState(false);
+  const [deletingItems, setDeletingItems] = useState<Set<string>>(new Set());
 
   const {
     observations,
@@ -28,6 +30,32 @@ export default function ListScreen() {
     deleteObservation,
     refreshObservations
   } = useObservations();
+
+  // Animation values pour chaque élément
+  const animationValues = useRef<{ [key: string]: Animated.Value }>({});
+  const deleteAnimationValues = useRef<{ [key: string]: Animated.Value }>({});
+
+  // Initialiser les animations pour les nouveaux éléments
+  useEffect(() => {
+    observations.forEach((observation, index) => {
+      if (!animationValues.current[observation.id]) {
+        animationValues.current[observation.id] = new Animated.Value(-100);
+
+        // Animation d'entrée avec délai progressif
+        Animated.spring(animationValues.current[observation.id], {
+          toValue: 0,
+          delay: index * 150, // Délai progressif
+          useNativeDriver: true,
+          tension: 80,
+          friction: 8,
+        }).start();
+      }
+
+      if (!deleteAnimationValues.current[observation.id]) {
+        deleteAnimationValues.current[observation.id] = new Animated.Value(1);
+      }
+    });
+  }, [observations]);
 
   const handleObservationPress = (observation: Observation) => {
     setSelectedObservation(observation);
@@ -54,6 +82,28 @@ export default function ListScreen() {
     }
   };
 
+  const animateDeleteItem = async (observationId: string) => {
+    return new Promise<void>((resolve) => {
+      setDeletingItems(prev => new Set(prev).add(observationId));
+
+      // Animation "pop" de suppression
+      Animated.sequence([
+        Animated.timing(deleteAnimationValues.current[observationId], {
+          toValue: 1.1,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+        Animated.timing(deleteAnimationValues.current[observationId], {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        resolve();
+      });
+    });
+  };
+
   const handleDirectDelete = (observation: Observation) => {
     Alert.alert(
       'Supprimer l\'observation',
@@ -63,7 +113,10 @@ export default function ListScreen() {
         {
           text: 'Supprimer',
           style: 'destructive',
-          onPress: () => handleObservationDelete(observation.id),
+          onPress: async () => {
+            await animateDeleteItem(observation.id);
+            handleObservationDelete(observation.id);
+          },
         },
       ]
     );
@@ -91,13 +144,34 @@ export default function ListScreen() {
     });
   };
 
-  const renderObservationItem = ({ item }: { item: Observation }) => (
-    <TouchableOpacity
-      style={styles.observationItem}
-      onPress={() => handleObservationPress(item)}
-      activeOpacity={0.7}
-    >
-      <View style={styles.observationContent}>
+  const renderObservationItem = ({ item }: { item: Observation }) => {
+    const enterAnimation = animationValues.current[item.id];
+    const deleteAnimation = deleteAnimationValues.current[item.id];
+    const isDeleting = deletingItems.has(item.id);
+
+    return (
+      <Animated.View
+        style={[
+          {
+            transform: [
+              {
+                translateY: enterAnimation ? enterAnimation : 0,
+              },
+              {
+                scale: deleteAnimation ? deleteAnimation : 1,
+              },
+            ],
+            opacity: isDeleting ? deleteAnimation : 1,
+          },
+        ]}
+      >
+        <TouchableOpacity
+          style={styles.observationItem}
+          onPress={() => !isDeleting && handleObservationPress(item)}
+          activeOpacity={0.7}
+          disabled={isDeleting}
+        >
+          <View style={styles.observationContent}>
         {/* Photo ou placeholder */}
         <View style={styles.imageContainer}>
           {item.imageUri ? (
@@ -138,8 +212,10 @@ export default function ListScreen() {
           </TouchableOpacity>
         </View>
       </View>
-    </TouchableOpacity>
-  );
+        </TouchableOpacity>
+      </Animated.View>
+    );
+  };
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>

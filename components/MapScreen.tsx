@@ -13,6 +13,7 @@ import { ObservationDetails } from './ObservationDetails';
 import { Observation } from '@/types/Observation';
 import { LocationIcon, TargetIcon, PawIcon } from './Icons';
 import { MAP_CONFIG, HAPTIC_CONFIG } from '@/constants/config';
+import { globalEventEmitter, OBSERVATION_EVENTS } from '@/utils/eventEmitter';
 
 Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_PUBLIC_TOKEN!);
 
@@ -41,6 +42,18 @@ export const MapScreen: React.FC = () => {
     });
   }, [observations]);
 
+  // Nettoyer les animations quand une observation est supprimée
+  useEffect(() => {
+    const cleanup = globalEventEmitter.on(OBSERVATION_EVENTS.DELETED, (observationId: string) => {
+      // Supprimer l'animation value pour l'observation supprimée
+      if (animationValues.current[observationId]) {
+        delete animationValues.current[observationId];
+      }
+    });
+
+    return cleanup;
+  }, []);
+
   const handleMapPress = (feature: any) => {
     const coordinates = feature.geometry.coordinates;
     setSelectedCoordinates({
@@ -56,12 +69,14 @@ export const MapScreen: React.FC = () => {
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType[HAPTIC_CONFIG.NOTIFICATION_SUCCESS]);
 
-      animationValues.current[newObservation.id] = new Animated.Value(-200);
+      animationValues.current[newObservation.id] = new Animated.Value(-800);
       Animated.spring(animationValues.current[newObservation.id], {
         toValue: 0,
         useNativeDriver: true,
-        tension: 100,
-        friction: 8,
+        tension: 50,
+        friction: 6,
+        restSpeedThreshold: 0.01,
+        restDisplacementThreshold: 0.01,
       }).start();
     } catch (error) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType[HAPTIC_CONFIG.NOTIFICATION_ERROR]);
@@ -175,13 +190,14 @@ export const MapScreen: React.FC = () => {
           pulsing={{ isEnabled: true }}
         />
 
-        {observations.map((observation) => {
+        {observations.map((observation, index) => {
           const animValue = animationValues.current[observation.id];
-          const hasAnimation = animValue && animValue._value !== 0;
+          const hasAnimation = animValue !== undefined;
+          const uniqueKey = `marker_${observation.id}_${index}`;
 
           return (
             <Mapbox.MarkerView
-              key={observation.id}
+              key={uniqueKey}
               id={observation.id}
               coordinate={[observation.longitude, observation.latitude]}
             >
@@ -191,22 +207,29 @@ export const MapScreen: React.FC = () => {
                     transform: [
                       {
                         translateY: animValue ? animValue.interpolate({
-                          inputRange: [-200, 0],
-                          outputRange: [-200, 0],
+                          inputRange: [-800, 0],
+                          outputRange: [-800, 0],
                           extrapolate: 'clamp'
                         }) : 0
                       },
                       {
                         scale: animValue ? animValue.interpolate({
-                          inputRange: [-200, 0],
-                          outputRange: [0.3, 1],
+                          inputRange: [-800, -400, 0],
+                          outputRange: [0.1, 0.6, 1],
                           extrapolate: 'clamp'
                         }) : 1
+                      },
+                      {
+                        rotate: animValue ? animValue.interpolate({
+                          inputRange: [-800, 0],
+                          outputRange: ['180deg', '0deg'],
+                          extrapolate: 'clamp'
+                        }) : '0deg'
                       }
                     ],
                     opacity: animValue ? animValue.interpolate({
-                      inputRange: [-200, 0],
-                      outputRange: [0, 1],
+                      inputRange: [-800, -600, 0],
+                      outputRange: [0, 0.8, 1],
                       extrapolate: 'clamp'
                     }) : 1
                   }

@@ -2,13 +2,12 @@ import React, { useState } from 'react';
 import {
   Alert,
   Image,
-  Modal,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
-  Platform
+  Platform,
+  ScrollView
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -17,6 +16,8 @@ import { ObservationService } from '@/services/ObservationService';
 import { Observation } from '@/types/Observation';
 import { CalendarIcon, CameraIcon } from './Icons';
 import { logger } from '@/utils/logger';
+import { Modal, Button, Input } from './ui';
+import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES } from '@/constants/styles';
 
 interface ObservationFormProps {
   visible: boolean;
@@ -119,7 +120,7 @@ export const ObservationForm: React.FC<ObservationFormProps> = ({
     );
   };
 
-  const handleDateChange = (event: any, selectedDate?: Date) => {
+  const handleDateChange = (_event: any, selectedDate?: Date) => {
     setShowDatePicker(Platform.OS === 'ios');
     if (selectedDate) {
       const dateString = selectedDate.toISOString().split('T')[0];
@@ -163,31 +164,31 @@ export const ObservationForm: React.FC<ObservationFormProps> = ({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={handleClose}>
-            <Text style={styles.cancelButton}>Annuler</Text>
-          </TouchableOpacity>
-          <Text style={styles.title}>Nouvelle observation</Text>
-          <TouchableOpacity onPress={handleSave} disabled={isLoading}>
-            <Text style={[styles.saveButton, isLoading && styles.disabledButton]}>
-              {isLoading ? 'Sauvegarde...' : 'Enregistrer'}
-            </Text>
-          </TouchableOpacity>
-        </View>
+    <Modal visible={visible} onClose={handleClose} maxHeight="90%" minHeight="70%">
+      <View style={styles.header}>
+        <Button
+          title="Annuler"
+          onPress={handleClose}
+          variant="ghost"
+          size="sm"
+        />
+        <Text style={styles.title}>Nouvelle observation</Text>
+        <Button
+          title={isLoading ? 'Sauvegarde...' : 'Enregistrer'}
+          onPress={handleSave}
+          disabled={isLoading}
+          size="sm"
+        />
+      </View>
 
-        <View style={styles.form}>
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>{"Nom de l'observation *"}</Text>
-            <TextInput
-              style={styles.input}
-              value={name}
-              onChangeText={setName}
-              placeholder="Ex: Lézard vert"
-              maxLength={100}
-            />
-          </View>
+      <ScrollView style={styles.form} showsVerticalScrollIndicator={false}>
+          <Input
+            label="Nom de l'observation *"
+            value={name}
+            onChangeText={setName}
+            placeholder="Ex: Lézard vert"
+            maxLength={100}
+          />
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Date</Text>
@@ -198,7 +199,7 @@ export const ObservationForm: React.FC<ObservationFormProps> = ({
               <Text style={styles.dateButtonText}>
                 {date || 'Sélectionner une date'}
               </Text>
-              <CalendarIcon color="#666" size={20} />
+              <CalendarIcon color={COLORS.TEXT.SECONDARY} size={20} />
             </TouchableOpacity>
           </View>
 
@@ -224,14 +225,13 @@ export const ObservationForm: React.FC<ObservationFormProps> = ({
             ) : (
               <TouchableOpacity style={styles.addImageButton} onPress={showImagePicker}>
                 <View style={styles.addImageContent}>
-                  <CameraIcon color="#007AFF" size={20} />
+                  <CameraIcon color={COLORS.SECONDARY} size={20} />
                   <Text style={styles.addImageText}>Ajouter une image</Text>
                 </View>
               </TouchableOpacity>
             )}
           </View>
-        </View>
-      </View>
+      </ScrollView>
 
       {/* DateTimePicker */}
       {showDatePicker && (
@@ -247,84 +247,60 @@ export const ObservationForm: React.FC<ObservationFormProps> = ({
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    paddingBottom: SPACING.LG,
+    marginBottom: SPACING.LG,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-    backgroundColor: 'white',
+    borderBottomColor: COLORS.BORDER.LIGHT,
   },
   title: {
-    fontSize: 18,
+    fontSize: FONT_SIZES.XL,
     fontWeight: '600',
-    color: '#333',
-  },
-  cancelButton: {
-    color: '#007AFF',
-    fontSize: 16,
-  },
-  saveButton: {
-    color: '#007AFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  disabledButton: {
-    color: '#999',
+    color: COLORS.TEXT.PRIMARY,
   },
   form: {
-    padding: 16,
+    flex: 1,
   },
   inputGroup: {
-    marginBottom: 20,
+    marginBottom: SPACING.XL,
   },
   label: {
-    fontSize: 16,
+    fontSize: FONT_SIZES.LG,
     fontWeight: '500',
-    marginBottom: 8,
-    color: '#333',
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    backgroundColor: 'white',
+    marginBottom: SPACING.SM,
+    color: COLORS.TEXT.PRIMARY,
   },
   coordinates: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: FONT_SIZES.MD,
+    color: COLORS.TEXT.SECONDARY,
     fontFamily: 'monospace',
-    backgroundColor: 'white',
-    padding: 12,
-    borderRadius: 8,
+    backgroundColor: COLORS.BACKGROUND.PRIMARY,
+    padding: SPACING.MD,
+    borderRadius: BORDER_RADIUS.SM,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: COLORS.BORDER.MEDIUM,
   },
   addImageButton: {
     borderWidth: 2,
-    borderColor: '#007AFF',
+    borderColor: COLORS.SECONDARY,
     borderStyle: 'dashed',
-    borderRadius: 8,
-    padding: 20,
+    borderRadius: BORDER_RADIUS.SM,
+    padding: SPACING.XL,
     alignItems: 'center',
-    backgroundColor: 'white',
+    backgroundColor: COLORS.BACKGROUND.PRIMARY,
   },
   addImageContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: SPACING.SM,
   },
   addImageText: {
-    color: '#007AFF',
-    fontSize: 16,
+    color: COLORS.SECONDARY,
+    fontSize: FONT_SIZES.LG,
   },
   imageContainer: {
     alignItems: 'center',
@@ -332,32 +308,32 @@ const styles = StyleSheet.create({
   image: {
     width: 200,
     height: 150,
-    borderRadius: 8,
-    marginBottom: 10,
+    borderRadius: BORDER_RADIUS.SM,
+    marginBottom: SPACING.MD,
   },
   changeImageButton: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
+    backgroundColor: COLORS.SECONDARY,
+    paddingHorizontal: SPACING.LG,
+    paddingVertical: SPACING.SM,
+    borderRadius: BORDER_RADIUS.SM,
   },
   changeImageText: {
-    color: 'white',
-    fontSize: 14,
+    color: COLORS.TEXT.LIGHT,
+    fontSize: FONT_SIZES.MD,
   },
   dateButton: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 12,
-    backgroundColor: 'white',
+    borderColor: COLORS.BORDER.MEDIUM,
+    borderRadius: BORDER_RADIUS.SM,
+    padding: SPACING.MD,
+    backgroundColor: COLORS.BACKGROUND.PRIMARY,
   },
   dateButtonText: {
-    fontSize: 16,
-    color: '#333',
+    fontSize: FONT_SIZES.LG,
+    color: COLORS.TEXT.PRIMARY,
     flex: 1,
   },
 });

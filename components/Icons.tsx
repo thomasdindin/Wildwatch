@@ -48,3 +48,11 @@ export const PawIcon = ({color = "#4CAF50", size = 20} : IconProps) => (
 export const ShareIcon = ({ color = '#007AFF', size = 18 }: IconProps) => (
   <Ionicons name="share-outline" size={size} color={color} />
 );
+
+export const CloseIcon = ({ color = '#666', size = 18 }: IconProps) => (
+  <Ionicons name="close" size={size} color={color} />
+);
+
+export const SaveIcon = ({ color = '#007AFF', size = 18 }: IconProps) => (
+  <Ionicons name="save-outline" size={size} color={color} />
+);

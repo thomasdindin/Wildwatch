@@ -18,7 +18,7 @@ export interface Observation {
   longitude: number;
 
   /** Optional URI to the observation's image */
-  imageUri?: string;
+  imageUri?: string | undefined;
 
   /** Timestamp when the observation was created in ISO string format */
   createdAt: string;
