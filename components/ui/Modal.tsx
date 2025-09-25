@@ -39,23 +39,24 @@ export const Modal: React.FC<ModalProps> = ({
       transparent={true}
       onRequestClose={onClose}
     >
-      <TouchableWithoutFeedback onPress={onClose}>
-        <View style={styles.overlay}>
-          <TouchableWithoutFeedback onPress={() => {}}>
-            <View style={styles.modalContainer}>
-              <View style={[
-                styles.container,
-                {
-                  maxHeight: maxHeightValue,
-                  minHeight: minHeightValue,
-                }
-              ]}>
-                {children}
-              </View>
+      <View style={styles.overlay}>
+        <TouchableWithoutFeedback onPress={onClose}>
+          <View style={styles.backdrop} />
+        </TouchableWithoutFeedback>
+        <View style={styles.modalContainer}>
+          <TouchableWithoutFeedback>
+            <View style={[
+              styles.container,
+              {
+                maxHeight: maxHeightValue,
+                minHeight: minHeightValue,
+              }
+            ]}>
+              {children}
             </View>
           </TouchableWithoutFeedback>
         </View>
-      </TouchableWithoutFeedback>
+      </View>
     </RNModal>
   );
 };
@@ -63,8 +64,15 @@ export const Modal: React.FC<ModalProps> = ({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
+    position: 'relative',
+  },
+  backdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     backgroundColor: COLORS.OVERLAY.MEDIUM,
-    justifyContent: 'flex-end',
   },
   modalContainer: {
     flex: 1,
