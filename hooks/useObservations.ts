@@ -43,8 +43,6 @@ export const useObservations = (): UseObservationsReturn => {
       const uniqueData = deduplicateObservations(data);
       setObservations(uniqueData);
 
-      // Émettre l'événement pour synchroniser les autres instances
-      globalEventEmitter.emit(OBSERVATION_EVENTS.REFRESHED, uniqueData);
     } catch (err) {
       const errorMessage = 'Failed to load observations';
       setError(errorMessage);
@@ -57,91 +55,60 @@ export const useObservations = (): UseObservationsReturn => {
   const addObservation = useCallback(async (observation: Observation) => {
     try {
       await ObservationService.saveObservation(observation);
-      setObservations(prev => {
-        // Check if observation already exists to prevent duplicates
-        if (prev.some(obs => obs.id === observation.id)) {
-          logger.warn('Observation already exists, not adding duplicate', { id: observation.id });
-          return prev;
-        }
-        return [...prev, observation];
-      });
-
-      // Émettre l'événement pour synchroniser les autres instances
-      globalEventEmitter.emit(OBSERVATION_EVENTS.ADDED, observation);
+      // Recharger toutes les données depuis AsyncStorage pour être sûr
+      await refreshObservations();
+      // Émettre un événement simple pour dire aux autres écrans de recharger
+      globalEventEmitter.emit(OBSERVATION_EVENTS.REFRESHED, null);
     } catch (err) {
       const errorMessage = 'Failed to save observation';
       setError(errorMessage);
       logger.error(errorMessage, err);
       throw err;
     }
-  }, []);
+  }, [refreshObservations]);
 
   const updateObservation = useCallback(async (updatedObservation: Observation) => {
     try {
       await ObservationService.updateObservation(updatedObservation);
-      setObservations(prev =>
-        prev.map(obs => (obs.id === updatedObservation.id ? updatedObservation : obs))
-      );
-
-      // Émettre l'événement pour synchroniser les autres instances
-      globalEventEmitter.emit(OBSERVATION_EVENTS.UPDATED, updatedObservation);
+      // Recharger toutes les données depuis AsyncStorage
+      await refreshObservations();
+      // Émettre un événement simple pour dire aux autres écrans de recharger
+      globalEventEmitter.emit(OBSERVATION_EVENTS.REFRESHED, null);
     } catch (err) {
       const errorMessage = 'Failed to update observation';
       setError(errorMessage);
       logger.error(errorMessage, err);
       throw err;
     }
-  }, []);
+  }, [refreshObservations]);
 
   const deleteObservation = useCallback(async (id: string) => {
     try {
       await ObservationService.deleteObservation(id);
-      setObservations(prev => prev.filter(obs => obs.id !== id));
-
-      // Émettre l'événement pour synchroniser les autres instances
-      globalEventEmitter.emit(OBSERVATION_EVENTS.DELETED, id);
+      // Recharger toutes les données depuis AsyncStorage
+      await refreshObservations();
+      // Émettre un événement simple pour dire aux autres écrans de recharger
+      globalEventEmitter.emit(OBSERVATION_EVENTS.REFRESHED, null);
     } catch (err) {
       const errorMessage = 'Failed to delete observation';
       setError(errorMessage);
       logger.error(errorMessage, err);
       throw err;
     }
-  }, []);
+  }, [refreshObservations]);
 
-  // Écouter les événements d'autres instances
+  // Écouter les événements d'autres instances pour recharger les données
   useEffect(() => {
-    const unsubscribeRefresh = globalEventEmitter.on(OBSERVATION_EVENTS.REFRESHED, (data: Observation[]) => {
-      setObservations(data);
-    });
-
-    const unsubscribeAdded = globalEventEmitter.on(OBSERVATION_EVENTS.ADDED, (observation: Observation) => {
-      setObservations(prev => {
-        // Éviter les doublons
-        if (prev.some(obs => obs.id === observation.id)) {
-          return prev;
-        }
-        return [...prev, observation];
-      });
-    });
-
-    const unsubscribeUpdated = globalEventEmitter.on(OBSERVATION_EVENTS.UPDATED, (observation: Observation) => {
-      setObservations(prev =>
-        prev.map(obs => (obs.id === observation.id ? observation : obs))
-      );
-    });
-
-    const unsubscribeDeleted = globalEventEmitter.on(OBSERVATION_EVENTS.DELETED, (observationId: string) => {
-      setObservations(prev => prev.filter(obs => obs.id !== observationId));
+    const unsubscribeRefresh = globalEventEmitter.on(OBSERVATION_EVENTS.REFRESHED, () => {
+      // Recharger les données depuis AsyncStorage quand un autre écran signale un changement
+      refreshObservations();
     });
 
     // Cleanup
     return () => {
       unsubscribeRefresh();
-      unsubscribeAdded();
-      unsubscribeUpdated();
-      unsubscribeDeleted();
     };
-  }, []);
+  }, [refreshObservations]);
 
   useEffect(() => {
     refreshObservations();

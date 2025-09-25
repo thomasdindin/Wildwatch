@@ -190,7 +190,14 @@ export const MapScreen: React.FC = () => {
           pulsing={{ isEnabled: true }}
         />
 
-        {observations.map((observation, index) => {
+        {(observations || [])
+          .filter(observation =>
+            !isNaN(observation.latitude) &&
+            !isNaN(observation.longitude) &&
+            observation.latitude >= -90 && observation.latitude <= 90 &&
+            observation.longitude >= -180 && observation.longitude <= 180
+          )
+          .map((observation, index) => {
           const animValue = animationValues.current[observation.id];
           const hasAnimation = animValue !== undefined;
           const uniqueKey = `marker_${observation.id}_${index}`;

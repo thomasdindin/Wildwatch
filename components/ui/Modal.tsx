@@ -4,7 +4,6 @@ import {
   View,
   StyleSheet,
   TouchableWithoutFeedback,
-  SafeAreaView,
   Dimensions,
 } from 'react-native';
 import { COLORS, SPACING, BORDER_RADIUS, SHADOWS } from '@/constants/styles';
@@ -36,13 +35,14 @@ export const Modal: React.FC<ModalProps> = ({
     <RNModal
       visible={visible}
       animationType="slide"
-      presentationStyle="pageSheet"
+      presentationStyle="overFullScreen"
+      transparent={true}
       onRequestClose={onClose}
     >
       <TouchableWithoutFeedback onPress={onClose}>
         <View style={styles.overlay}>
           <TouchableWithoutFeedback onPress={() => {}}>
-            <SafeAreaView style={styles.safeArea}>
+            <View style={styles.modalContainer}>
               <View style={[
                 styles.container,
                 {
@@ -52,7 +52,7 @@ export const Modal: React.FC<ModalProps> = ({
               ]}>
                 {children}
               </View>
-            </SafeAreaView>
+            </View>
           </TouchableWithoutFeedback>
         </View>
       </TouchableWithoutFeedback>
@@ -66,9 +66,10 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.OVERLAY.MEDIUM,
     justifyContent: 'flex-end',
   },
-  safeArea: {
+  modalContainer: {
     flex: 1,
     justifyContent: 'flex-end',
+    paddingTop: 50,
   },
   container: {
     backgroundColor: COLORS.BACKGROUND.PRIMARY,
